@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public achievement record for a verified user who reached Maximum Security Status without storing any password or PII.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user who achieved Maximum Security Status.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "callsign": {
+          "type": "string",
+          "description": "User-selected non-PII display handle shown on the leaderboard.",
+          "minLength": 2,
+          "maxLength": 24,
+          "pattern": "^[a-zA-Z0-9_\\- ]+$"
+        },
+        "entropyBits": {
+          "type": "number",
+          "description": "Calculated Shannon/pool entropy in bits (100 to 512)."
+        },
+        "charLength": {
+          "type": "number",
+          "description": "Length of the evaluated password (16 to 128 characters; password itself is never stored)."
+        },
+        "poolSize": {
+          "type": "number",
+          "description": "Character pool cardinality unlocked (70 to 100)."
+        },
+        "badgeCount": {
+          "type": "number",
+          "description": "Number of complexity badges unlocked (6 to 8)."
+        },
+        "earnedBadges": {
+          "type": "string",
+          "description": "Bounded list (6 to 8 items) of unlocked complexity badge identifiers."
+        },
+        "tier": {
+          "type": "string",
+          "description": "Security classification gate; must be MAXIMUM_SECURITY.",
+          "enum": ["MAXIMUM_SECURITY"],
+          "minLength": 16,
+          "maxLength": 16,
+          "pattern": "^MAXIMUM_SECURITY$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server timestamp when Maximum Security Status was first claimed."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest personal-best update."
+        }
+      },
+      "required": [
+        "userId",
+        "callsign",
+        "entropyBits",
+        "charLength",
+        "poolSize",
+        "badgeCount",
+        "earnedBadges",
+        "tier",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/leaderboardEntries/{userId}": {
+      "schema": {
+        "$ref": "#/entities/LeaderboardEntry"
+      },
+      "description": "Stores one Maximum Security leaderboard entry per verified user UID."
+    }
+  }
+}

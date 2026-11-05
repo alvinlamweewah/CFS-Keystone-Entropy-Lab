@@ -1,0 +1,6 @@
+{
+  "name": "CFS Keystone Entropy Lab",
+  "description": "Gamified password strength evaluator created by the CyberforSec Pte Ltd Team, featuring complexity badges, live entropy progress levels, educational character safety insights, and a Maximum Security leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

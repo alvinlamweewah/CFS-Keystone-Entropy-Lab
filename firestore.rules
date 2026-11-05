@@ -1,0 +1,148 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll([
+          'userId',
+          'callsign',
+          'entropyBits',
+          'charLength',
+          'poolSize',
+          'badgeCount',
+          'earnedBadges',
+          'tier',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId',
+          'callsign',
+          'entropyBits',
+          'charLength',
+          'poolSize',
+          'badgeCount',
+          'earnedBadges',
+          'tier',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.userId is string
+        && data.userId.size() >= 1
+        && data.userId.size() <= 128
+        && data.userId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.userId == request.auth.uid
+        && data.callsign is string
+        && data.callsign.size() >= 2
+        && data.callsign.size() <= 24
+        && data.callsign.matches('^[a-zA-Z0-9_\\- ]+$')
+        && data.entropyBits is number
+        && data.entropyBits >= 100
+        && data.entropyBits <= 512
+        && data.charLength is int
+        && data.charLength >= 16
+        && data.charLength <= 128
+        && data.poolSize is int
+        && data.poolSize >= 70
+        && data.poolSize <= 100
+        && data.badgeCount is int
+        && data.badgeCount >= 6
+        && data.badgeCount <= 8
+        && data.earnedBadges is list
+        && data.earnedBadges.size() >= 6
+        && data.earnedBadges.size() <= 8
+        && data.earnedBadges.size() == data.badgeCount
+        && data.earnedBadges[0] is string
+        && data.earnedBadges[0].size() <= 32
+        && data.earnedBadges.hasOnly([
+          'len_12',
+          'len_16',
+          'upper_case',
+          'lower_case',
+          'digits',
+          'symbols',
+          'non_sequential',
+          'high_entropy'
+        ])
+        && data.tier is string
+        && data.tier.size() == 16
+        && data.tier.matches('^MAXIMUM_SECURITY$')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /leaderboardEntries/{userId} {
+      allow get: if isSignedIn()
+        && isValidId(userId)
+        && (userId == request.auth.uid || existing().tier == 'MAXIMUM_SECURITY');
+
+      allow list: if isSignedIn()
+        && existing().tier == 'MAXIMUM_SECURITY'
+        && request.query.limit <= 50;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidLeaderboardEntry(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidLeaderboardEntry(incoming())
+        && userId == request.auth.uid
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Personal-best entropy improvement
+          (incoming().entropyBits > existing().entropyBits
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'callsign',
+              'entropyBits',
+              'charLength',
+              'poolSize',
+              'badgeCount',
+              'earnedBadges',
+              'updatedAt'
+            ]))
+          ||
+          // Action 2: Callsign rename only
+          (incoming().diff(existing()).affectedKeys().hasOnly([
+              'callsign',
+              'updatedAt'
+            ]))
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && existing().userId == request.auth.uid;
+    }
+  }
+}
